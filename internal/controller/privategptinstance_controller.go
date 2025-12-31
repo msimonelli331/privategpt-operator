@@ -281,7 +281,7 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 
 	// Set the ownerRef for the Deployment
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
-	if err := ctrl.SetControllerReference(&privateGPTInstance, dep, r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(privateGPTInstance, dep, r.Scheme); err != nil {
 		return nil, err
 	}
 	return dep, nil
@@ -314,7 +314,7 @@ func (r *PrivateGPTInstanceReconciler) serviceForInstance(
 
 	// Set the ownerRef for the Service
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
-	if err := ctrl.SetControllerReference(&privateGPTInstance, svc, r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(privateGPTInstance, svc, r.Scheme); err != nil {
 		return nil, err
 	}
 	return svc, nil
@@ -345,7 +345,7 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 					HTTP: &networkingv1.HTTPIngressRuleValue{
 						Paths: []networkingv1.HTTPIngressPath{{
 							Path:     "/",
-							PathType: &networkingv1.PathTypePrefix,
+							PathType: ptrPathType(networkingv1.PathTypePrefix),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
 									Name: privateGPTInstance.Name,
@@ -367,7 +367,7 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 
 	// Set the ownerRef for the Ingress
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
-	if err := ctrl.SetControllerReference(&privateGPTInstance, ingress, r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(privateGPTInstance, ingress, r.Scheme); err != nil {
 		return nil, err
 	}
 	return ingress, nil
@@ -379,4 +379,8 @@ func stringPtr(s string) *string {
 
 func int32Ptr(i int32) *int32 {
 	return &i
+}
+
+func ptrPathType(p networkingv1.PathType) *networkingv1.PathType {
+    return &p
 }
