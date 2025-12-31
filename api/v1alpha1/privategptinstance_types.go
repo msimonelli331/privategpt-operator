@@ -32,7 +32,7 @@ type PrivateGPTInstanceSpec struct {
 	// Image defines the container image the private gpt instance will run.
 	// +kubebuilder:validation:MinLength=1
 	// +optional
-	// +kubebuilder:default:=ghcr.io/msimonelli331/privategpt:latest
+	// +kubebuilder:default:="ghcr.io/msimonelli331/privategpt:latest"
 	Image string `json:"image,omitempty"`
 	// Domain defines the dns domain to be used in the ingress hostname.
 	// +kubebuilder:validation:MinLength=1
