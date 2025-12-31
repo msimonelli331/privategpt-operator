@@ -72,9 +72,9 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Initialize status if not present
 	if len(privateGPTInstance.Status.Conditions) == 0 {
-		result, err := r.initializeStatus(ctx, privateGPTInstance, req)
+		err := r.initializeStatus(ctx, privateGPTInstance)
 		if err != nil {
-			return result, err
+			return ctrl.Result{}, err
 		}
 
 		// Let's re-fetch the privateGPTInstance Custom Resource after updating the status
@@ -123,7 +123,7 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 }
 
 // initializeStatus sets up the initial status for the custom resource
-func (r *PrivateGPTInstanceReconciler) initializeStatus(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, req ctrl.Request) (ctrl.Result, error) {
+func (r *PrivateGPTInstanceReconciler) initializeStatus(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) error {
 	log := logf.FromContext(ctx)
 
 	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
@@ -132,10 +132,10 @@ func (r *PrivateGPTInstanceReconciler) initializeStatus(ctx context.Context, pri
 
 	if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
 		log.Error(err, "Failed to update privateGPTInstance status")
-		return ctrl.Result{}, err
+		return err
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // reconcileConfigMap handles ConfigMap reconciliation
@@ -156,7 +156,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileConfigMap(ctx context.Context, p
 			log.Error(err, "Failed to update privateGPTInstance status")
 			return ctrl.Result{}, err
 		}
-		
+
 		// Return early to stop reconciliation
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
@@ -187,7 +187,7 @@ func (r *PrivateGPTInstanceReconciler) reconcilePersistentVolumeClaim(ctx contex
 			log.Error(err, "Failed to update privateGPTInstance status")
 			return ctrl.Result{}, err
 		}
-		
+
 		// Return early to stop reconciliation
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
