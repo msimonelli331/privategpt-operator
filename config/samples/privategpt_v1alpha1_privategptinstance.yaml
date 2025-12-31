@@ -1,0 +1,9 @@
+apiVersion: privategpt.my.domain/v1alpha1
+kind: PrivateGPTInstance
+metadata:
+  labels:
+    app.kubernetes.io/name: privategpt-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: privategptinstance-sample
+spec:
+  # TODO(user): Add fields here

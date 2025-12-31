@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - privategpt.my.domain
+  resources:
+  - privategptinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - privategpt.my.domain
+  resources:
+  - privategptinstances/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - privategpt.my.domain
+  resources:
+  - privategptinstances/status
+  verbs:
+  - get
+  - patch
+  - update

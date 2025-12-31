@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- privategpt_v1alpha1_privategptinstance.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
