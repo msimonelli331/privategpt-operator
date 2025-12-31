@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -13,9 +13,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-    "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -46,40 +46,40 @@ type PrivateGPTInstanceReconciler struct {
 func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-    privateGPTInstance := &privategptv1alpha1.PrivateGPTInstance{}
-    err := r.Get(ctx, req.NamespacedName, privateGPTInstance)
-    if err != nil {
-        if apierrors.IsNotFound(err) {
-            // If the custom resource is not found then it usually means that it was deleted or not created
-            // In this way, we will stop the reconciliation
-            log.Info("privateGPTInstance resource not found. Ignoring since object must be deleted")
-            return ctrl.Result{}, nil
-        }
-        // Error reading the object - requeue the request.
-        log.Error(err, "Failed to get privateGPTInstance")
-        return ctrl.Result{}, err
-    }
-	
+	privateGPTInstance := &privategptv1alpha1.PrivateGPTInstance{}
+	err := r.Get(ctx, req.NamespacedName, privateGPTInstance)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// If the custom resource is not found then it usually means that it was deleted or not created
+			// In this way, we will stop the reconciliation
+			log.Info("privateGPTInstance resource not found. Ignoring since object must be deleted")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get privateGPTInstance")
+		return ctrl.Result{}, err
+	}
+
 	log.Info("Processing PrivateGPTInstance", "name", privateGPTInstance.Name)
 
-    // Let's just set the status as Unknown when no status is available
-    if len(privateGPTInstance.Status.Conditions) == 0 {
-        meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-        if err = r.Status().Update(ctx, privateGPTInstance); err != nil {
-            log.Error(err, "Failed to update privateGPTInstance status")
-            return ctrl.Result{}, err
-        }
+	// Let's just set the status as Unknown when no status is available
+	if len(privateGPTInstance.Status.Conditions) == 0 {
+		meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
+		if err = r.Status().Update(ctx, privateGPTInstance); err != nil {
+			log.Error(err, "Failed to update privateGPTInstance status")
+			return ctrl.Result{}, err
+		}
 
-        // Let's re-fetch the privateGPTInstance Custom Resource after updating the status
-        // so that we have the latest state of the resource on the cluster and we will avoid
-        // raising the error "the object has been modified, please apply
-        // your changes to the latest version and try again" which would re-trigger the reconciliation
-        // if we try to update it again in the following operations
-        if err := r.Get(ctx, req.NamespacedName, privateGPTInstance); err != nil {
-            log.Error(err, "Failed to re-fetch privateGPTInstance")
-            return ctrl.Result{}, err
-        }
-    }
+		// Let's re-fetch the privateGPTInstance Custom Resource after updating the status
+		// so that we have the latest state of the resource on the cluster and we will avoid
+		// raising the error "the object has been modified, please apply
+		// your changes to the latest version and try again" which would re-trigger the reconciliation
+		// if we try to update it again in the following operations
+		if err := r.Get(ctx, req.NamespacedName, privateGPTInstance); err != nil {
+			log.Error(err, "Failed to re-fetch privateGPTInstance")
+			return ctrl.Result{}, err
+		}
+	}
 
 	// Check if a Deployment for the PrivateGPTInstance exists, if not, create one
 	deploymentFound := &appsv1.Deployment{}
@@ -89,39 +89,39 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		dep, err := r.deploymentForInstance(privateGPTInstance)
 		if err != nil {
 			log.Error(err, "Failed to define new Deployment resource for privateGPTInstance")
-			
-            // The following implementation will update the status
-            meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
-                Status: metav1.ConditionFalse, Reason: "Reconciling",
-                Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
-                log.Error(err, "Failed to update privateGPTInstance status")
-                return ctrl.Result{}, err
-            }
+			// The following implementation will update the status
+			meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            return ctrl.Result{}, err
+			if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+				log.Error(err, "Failed to update privateGPTInstance status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
 		}
 
-        log.Info("Creating a new Deployment",
-            "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-        if err = r.Create(ctx, dep); err != nil {
-            log.Error(err, "Failed to create new Deployment",
-                "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-            return ctrl.Result{}, err
-        }
+		log.Info("Creating a new Deployment",
+			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = r.Create(ctx, dep); err != nil {
+			log.Error(err, "Failed to create new Deployment",
+				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
+		}
 
-        // Deployment created successfully
-        // We will requeue the reconciliation so that we can ensure the state
-        // and move forward for the next operations
-        return ctrl.Result{RequeueAfter: time.Minute}, nil
-    } else if err != nil {
-        log.Error(err, "Failed to get Deployment")
-        // Let's return the error for the reconciliation be re-trigged again
-        return ctrl.Result{}, err
-    }
+		// Deployment created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Deployment")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
 
-		// Check if a Service for the PrivateGPTInstance exists, if not, create one
+	// Check if a Service for the PrivateGPTInstance exists, if not, create one
 	serviceFound := &corev1.Service{}
 	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, serviceFound)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -129,37 +129,37 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		svc, err := r.serviceForInstance(privateGPTInstance)
 		if err != nil {
 			log.Error(err, "Failed to define new Service resource for privateGPTInstance")
-			
-            // The following implementation will update the status
-            meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
-                Status: metav1.ConditionFalse, Reason: "Reconciling",
-                Message: fmt.Sprintf("Failed to create Service for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
-                log.Error(err, "Failed to update privateGPTInstance status")
-                return ctrl.Result{}, err
-            }
+			// The following implementation will update the status
+			meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Service for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            return ctrl.Result{}, err
+			if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+				log.Error(err, "Failed to update privateGPTInstance status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
 		}
 
-        log.Info("Creating a new Service",
-            "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
-        if err = r.Create(ctx, svc); err != nil {
-            log.Error(err, "Failed to create new Service",
-                "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
-            return ctrl.Result{}, err
-        }
+		log.Info("Creating a new Service",
+			"Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
+		if err = r.Create(ctx, svc); err != nil {
+			log.Error(err, "Failed to create new Service",
+				"Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
+			return ctrl.Result{}, err
+		}
 
-        // Service created successfully
-        // We will requeue the reconciliation so that we can ensure the state
-        // and move forward for the next operations
-        return ctrl.Result{RequeueAfter: time.Minute}, nil
+		// Service created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
-        log.Error(err, "Failed to get Service")
-        // Let's return the error for the reconciliation be re-trigged again
-        return ctrl.Result{}, err
-    }
+		log.Error(err, "Failed to get Service")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
 
 	// Check if an Ingress for the PrivateGPTInstance exists, if not, create one
 	ingressFound := &networkingv1.Ingress{}
@@ -169,58 +169,58 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		ing, err := r.ingressForInstance(privateGPTInstance)
 		if err != nil {
 			log.Error(err, "Failed to define new Ingress resource for privateGPTInstance")
-			
-            // The following implementation will update the status
-            meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
-                Status: metav1.ConditionFalse, Reason: "Reconciling",
-                Message: fmt.Sprintf("Failed to create Ingress for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
-                log.Error(err, "Failed to update privateGPTInstance status")
-                return ctrl.Result{}, err
-            }
+			// The following implementation will update the status
+			meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Ingress for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
 
-            return ctrl.Result{}, err
+			if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+				log.Error(err, "Failed to update privateGPTInstance status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
 		}
 
-        log.Info("Creating a new Ingress",
-            "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
-        if err = r.Create(ctx, ing); err != nil {
-            log.Error(err, "Failed to create new Ingress",
-                "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
-            return ctrl.Result{}, err
-        }
+		log.Info("Creating a new Ingress",
+			"Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
+		if err = r.Create(ctx, ing); err != nil {
+			log.Error(err, "Failed to create new Ingress",
+				"Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
+			return ctrl.Result{}, err
+		}
 
-        // Ingress created successfully
-        // We will requeue the reconciliation so that we can ensure the state
-        // and move forward for the next operations
-        return ctrl.Result{RequeueAfter: time.Minute}, nil
+		// Ingress created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
-        log.Error(err, "Failed to get Ingress")
-        // Let's return the error for the reconciliation be re-trigged again
-        return ctrl.Result{}, err
-    }
+		log.Error(err, "Failed to get Ingress")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
 
 	// The following implementation will update the status
-    meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
-        Status: metav1.ConditionTrue, Reason: "Reconciling",
-        Message: fmt.Sprintf("Deployment, Service, and Ingress for custom resource (%s) created successfully", privateGPTInstance.Name)})
+	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+		Status: metav1.ConditionTrue, Reason: "Reconciling",
+		Message: fmt.Sprintf("Deployment, Service, and Ingress for custom resource (%s) created successfully", privateGPTInstance.Name)})
 
-    if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
-        log.Error(err, "Failed to update privateGPTInstance status")
-        return ctrl.Result{}, err
-    }
+	if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+		log.Error(err, "Failed to update privateGPTInstance status")
+		return ctrl.Result{}, err
+	}
 
-    return ctrl.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PrivateGPTInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&privategptv1alpha1.PrivateGPTInstance{}).
-        Owns(&appsv1.Deployment{}).
-        Owns(&corev1.Service{}).
-        Owns(&networkingv1.Ingress{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
+		Owns(&networkingv1.Ingress{}).
 		Named("privategptinstance").
 		Complete(r)
 }
@@ -323,7 +323,7 @@ func (r *PrivateGPTInstanceReconciler) serviceForInstance(
 // ingressForInstance returns a PrivateGPTInstance Ingress object
 func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*networkingv1.Ingress, error) {
-    hostname := privateGPTInstance.Name + "." + "pgpt" + "." + privateGPTInstance.Spec.Domain
+	hostname := privateGPTInstance.Name + "." + "pgpt" + "." + privateGPTInstance.Spec.Domain
 
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -332,9 +332,9 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 			Labels: map[string]string{
 				"app.kubernetes.io/name": privateGPTInstance.Name,
 			},
-            Annotations: map[string]string{
+			Annotations: map[string]string{
 				"cert-manager.io/common-name": hostname,
-				"cert-manager.io/issuer": "ca-issuer",
+				"cert-manager.io/issuer":      "ca-issuer",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -382,5 +382,5 @@ func int32Ptr(i int32) *int32 {
 }
 
 func ptrPathType(p networkingv1.PathType) *networkingv1.PathType {
-    return &p
+	return &p
 }

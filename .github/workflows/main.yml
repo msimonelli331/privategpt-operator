@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: msimonelli331/privategpt
+  IMAGE_NAME: msimonelli331/privategpt-operator
 
 jobs:
   build-and-push-image:

@@ -51,6 +51,9 @@ var _ = Describe("PrivateGPTInstance Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
+					Spec: privategptv1alpha1.PrivateGPTInstanceSpec{
+						OllamaURL: "http://localhost:11434",
+					}
 					// TODO(user): Specify other spec details if needed.
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
