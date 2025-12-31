@@ -53,6 +53,8 @@ var _ = Describe("PrivateGPTInstance Controller", func() {
 					},
 					Spec: privategptv1alpha1.PrivateGPTInstanceSpec{
 						OllamaURL: "http://localhost:11434",
+						Image:     "ghcr.io/msimonelli331/privategpt:latest",
+						Domain:    "devops",
 					},
 					// TODO(user): Specify other spec details if needed.
 				}
