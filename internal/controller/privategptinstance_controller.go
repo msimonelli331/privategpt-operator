@@ -321,7 +321,9 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 						Name: "settings",
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
-								Name: privateGPTInstance.Name,
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "privategpt",
+								},
 								Items: []corev1.KeyToPath{
 									{
 										Key:  "settings-local.yaml",
