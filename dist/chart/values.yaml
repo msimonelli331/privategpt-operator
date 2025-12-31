@@ -67,3 +67,9 @@ certManager:
 # Requires prometheus-operator to be installed in the cluster.
 prometheus:
   enable: false
+
+privategpt:
+  privateGPTInstance:
+    enabled: true
+    ollamaURL: http://localhost:11434
+    domain: devops

@@ -20,6 +20,8 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 nvm install 24
 npm install -g cline
 
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
+
 docker network create -d=bridge --subnet=172.19.0.0/24 kind
 
 kind version
@@ -30,3 +32,4 @@ kubectl version --client
 node -v
 npm -v
 cline version
+helm version

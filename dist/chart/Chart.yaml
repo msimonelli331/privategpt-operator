@@ -5,3 +5,7 @@ type: application
 version: 0.1.3
 appVersion: "0.1.3"
 icon: "https://example.com/icon.png"
+dependencies:
+  - name: privategpt
+    version: 0.0.8
+    repository: https://msimonelli331.github.io/PrivateGPT
