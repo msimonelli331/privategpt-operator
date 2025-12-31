@@ -4,29 +4,47 @@ kind: ClusterRole
 metadata:
   name: manager-role
 rules:
-  - apiGroups:
-      - privategpt.eirl
-    resources:
-      - privategptinstances
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - privategpt.eirl
-    resources:
-      - privategptinstances/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - privategpt.eirl
-    resources:
-      - privategptinstances/status
-    verbs:
-      - get
-      - patch
-      - update
+- apiGroups:
+  - ""
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - deployments/status
+  verbs:
+  - get
+- apiGroups:
+  - privategpt.eirl
+  resources:
+  - privategptinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - privategpt.eirl
+  resources:
+  - privategptinstances/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - privategpt.eirl
+  resources:
+  - privategptinstances/status
+  verbs:
+  - get
+  - patch
+  - update

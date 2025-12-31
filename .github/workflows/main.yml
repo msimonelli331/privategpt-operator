@@ -19,13 +19,13 @@ jobs:
       id-token: write
     steps:
       - name: Create checkout directory
-        run: mkdir -p ~/go/github.com/msimonelli331
+        run: mkdir -p ~/go/src/github.com/msimonelli331
 
       - name: Checkout code
         uses: actions/checkout@v6
 
       - name: Create symlink in GOPATH
-        run: ln -s $(pwd) ~/go/github.com/msimonelli331
+        run: ln -s $(pwd) ~/go/src/github.com/msimonelli331
 
       - name: Set up Go
         uses: actions/setup-go@v6
