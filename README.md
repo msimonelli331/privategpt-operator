@@ -108,8 +108,7 @@ kubebuilder edit --plugins=helm/v2-alpha
 2. Install privategpt-operator
 
    ```bash
-   helm install privategpt-operator privategpt-operator/privategpt-operator --create-namespace -n devops \
-   --set privategpt.privateGPTInstance.ollamaURL=http://127.0.0.1:11434
+   helm install privategpt-operator privategpt-operator/privategpt-operator --create-namespace -n devops
    ```
 
 ### Test Steps

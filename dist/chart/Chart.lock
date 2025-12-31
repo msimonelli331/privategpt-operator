@@ -1,6 +1,0 @@
-dependencies:
-- name: privategpt
-  repository: https://msimonelli331.github.io/PrivateGPT
-  version: 0.0.8
-digest: sha256:915d501bc828dc9d450322c5dd452690b636dd5a0b596842dcd532b80e7afd1a
-generated: "2025-12-31T22:54:16.76251733Z"
