@@ -93,33 +93,31 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	configMapFound := &corev1.ConfigMap{}
 	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, configMapFound)
 	if err != nil && apierrors.IsNotFound(err) {
-		// ConfigMap Found
+		// ConfigMap not found, return early to stop reconciliation
+		log.Info("ConfigMap not found in this namespace")
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get ConfigMap")
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
-	} else {
-		log.Info("ConfigMap not found in this namespace")
-		// Let's return the error for the reconciliation be re-trigged again
-		return ctrl.Result{}, nil
 	}
+	// ConfigMap found, continue with reconciliation
+	log.Info("ConfigMap found in this namespace")
 
 	// Check if a PersistentVolumeClaim for the PrivateGPTInstance exists, if not, create one
 	persistentVolumeClaimFound := &corev1.PersistentVolumeClaim{}
 	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, persistentVolumeClaimFound)
 	if err != nil && apierrors.IsNotFound(err) {
-		// PersistentVolumeClaim Found
+		// PersistentVolumeClaim not found, return early to stop reconciliation
+		log.Info("PersistentVolumeClaim not found in this namespace")
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get PersistentVolumeClaim")
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
-	} else {
-		log.Info("PersistentVolumeClaim not found in this namespace")
-		// Let's return the error for the reconciliation be re-trigged again
-		return ctrl.Result{}, nil
 	}
+	// PersistentVolumeClaim found, continue with reconciliation
+	log.Info("PersistentVolumeClaim found in this namespace")
 
 	// Check if a Deployment for the PrivateGPTInstance exists, if not, create one
 	deploymentFound := &appsv1.Deployment{}
