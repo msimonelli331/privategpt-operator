@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	privategptv1alpha1 "github.com/msimonelli331/privategpt-operator/api/v1alpha1"
 )
@@ -121,7 +121,7 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
         return ctrl.Result{}, err
     }
 
-	// Check if a Service for the PrivateGPTInstance exists, if not, create one
+		// Check if a Service for the PrivateGPTInstance exists, if not, create one
 	serviceFound := &corev1.Service{}
 	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, serviceFound)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -145,7 +145,7 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
         log.Info("Creating a new Service",
             "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
-        if err = r.Create(ctx, dep); err != nil {
+        if err = r.Create(ctx, svc); err != nil {
             log.Error(err, "Failed to create new Service",
                 "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
             return ctrl.Result{}, err
@@ -185,7 +185,7 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
         log.Info("Creating a new Ingress",
             "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
-        if err = r.Create(ctx, dep); err != nil {
+        if err = r.Create(ctx, ing); err != nil {
             log.Error(err, "Failed to create new Ingress",
                 "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
             return ctrl.Result{}, err
@@ -227,7 +227,7 @@ func (r *PrivateGPTInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error 
 
 // deploymentForInstance returns a PrivateGPTInstance Deployment object
 func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
-	privateGPTInstance privategptv1alpha1.PrivateGPTInstance) (*appsv1.Deployment, error) {
+	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*appsv1.Deployment, error) {
 	image := privateGPTInstance.Spec.Image
 
 	dep := &appsv1.Deployment{
@@ -236,7 +236,7 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 			Namespace: privateGPTInstance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: 1,
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app.kubernetes.io/name": privateGPTInstance.Name},
 			},
@@ -289,7 +289,7 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 
 // serviceForInstance returns a PrivateGPTInstance Service object
 func (r *PrivateGPTInstanceReconciler) serviceForInstance(
-	privateGPTInstance privategptv1alpha1.PrivateGPTInstance) (*corev1.Service, error) {
+	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*corev1.Service, error) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      privateGPTInstance.Name,
@@ -322,8 +322,8 @@ func (r *PrivateGPTInstanceReconciler) serviceForInstance(
 
 // ingressForInstance returns a PrivateGPTInstance Ingress object
 func (r *PrivateGPTInstanceReconciler) ingressForInstance(
-	privateGPTInstance privategptv1alpha1.PrivateGPTInstance) (*networkingv1.Ingress, error) {
-    hostname := privateGPTInstance.Name + "." + "pgpt" + "." + privateGPTInstance.Domain
+	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*networkingv1.Ingress, error) {
+    hostname := privateGPTInstance.Name + "." + "pgpt" + "." + privateGPTInstance.Spec.Domain
 
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -345,7 +345,7 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 					HTTP: &networkingv1.HTTPIngressRuleValue{
 						Paths: []networkingv1.HTTPIngressPath{{
 							Path:     "/",
-							PathType: networkingv1.PathTypePrefix,
+							PathType: &networkingv1.PathTypePrefix,
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
 									Name: privateGPTInstance.Name,
@@ -375,4 +375,8 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
 }
