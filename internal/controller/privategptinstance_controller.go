@@ -126,8 +126,8 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 func (r *PrivateGPTInstanceReconciler) initializeStatus(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available", 
-		Status: metav1.ConditionUnknown, Reason: "Reconciling", 
+	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+		Status: metav1.ConditionUnknown, Reason: "Reconciling",
 		Message: "Starting reconciliation"})
 
 	if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
@@ -146,9 +146,19 @@ func (r *PrivateGPTInstanceReconciler) reconcileConfigMap(ctx context.Context, p
 	configMapFound := &corev1.ConfigMap{}
 	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, configMapFound)
 	if err != nil && apierrors.IsNotFound(err) {
-		// ConfigMap not found, return early to stop reconciliation
+		// ConfigMap not found, update status to degraded
 		log.Info("ConfigMap not found in this namespace")
-		return ctrl.Result{}, nil
+		meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Degraded",
+			Status: metav1.ConditionFalse, Reason: "ConfigMapNotFound",
+			Message: "ConfigMap privategpt not found in namespace " + privateGPTInstance.Namespace})
+
+		if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+			log.Error(err, "Failed to update privateGPTInstance status")
+			return ctrl.Result{}, err
+		}
+		
+		// Return early to stop reconciliation
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get ConfigMap")
 		// Let's return the error for the reconciliation be re-trigged again
@@ -167,9 +177,19 @@ func (r *PrivateGPTInstanceReconciler) reconcilePersistentVolumeClaim(ctx contex
 	persistentVolumeClaimFound := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, persistentVolumeClaimFound)
 	if err != nil && apierrors.IsNotFound(err) {
-		// PersistentVolumeClaim not found, return early to stop reconciliation
+		// PersistentVolumeClaim not found, update status to degraded
 		log.Info("PersistentVolumeClaim not found in this namespace")
-		return ctrl.Result{}, nil
+		meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Degraded",
+			Status: metav1.ConditionFalse, Reason: "PersistentVolumeClaimNotFound",
+			Message: "PersistentVolumeClaim privategpt not found in namespace " + privateGPTInstance.Namespace})
+
+		if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+			log.Error(err, "Failed to update privateGPTInstance status")
+			return ctrl.Result{}, err
+		}
+		
+		// Return early to stop reconciliation
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get PersistentVolumeClaim")
 		// Let's return the error for the reconciliation be re-trigged again
