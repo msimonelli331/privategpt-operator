@@ -1,7 +1,7 @@
 # This rule is not used by the project privategpt-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants read-only access to privategpt.my.domain resources.
+# Grants read-only access to privategpt.eirl resources.
 # This role is intended for users who need visibility into these resources
 # without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
 
@@ -13,17 +13,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: privategptinstance-viewer-role
 rules:
-- apiGroups:
-  - privategpt.my.domain
-  resources:
-  - privategptinstances
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - privategpt.my.domain
-  resources:
-  - privategptinstances/status
-  verbs:
-  - get
+  - apiGroups:
+      - privategpt.eirl
+    resources:
+      - privategptinstances
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - privategpt.eirl
+    resources:
+      - privategptinstances/status
+    verbs:
+      - get

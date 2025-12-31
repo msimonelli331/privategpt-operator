@@ -1,4 +1,4 @@
-apiVersion: privategpt.my.domain/v1alpha1
+apiVersion: privategpt.eirl/v1alpha1
 kind: PrivateGPTInstance
 metadata:
   labels:

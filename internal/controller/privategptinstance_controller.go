@@ -28,9 +28,9 @@ type PrivateGPTInstanceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=privategpt.my.domain,resources=privategptinstances,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=privategpt.my.domain,resources=privategptinstances/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=privategpt.my.domain,resources=privategptinstances/finalizers,verbs=update
+// +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=deployments/status,verbs=get
 

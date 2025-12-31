@@ -1,7 +1,7 @@
 # This rule is not used by the project privategpt-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants permissions to create, update, and delete resources within the privategpt.my.domain.
+# Grants permissions to create, update, and delete resources within the privategpt.eirl.
 # This role is intended for users who need to manage these resources
 # but should not control RBAC or manage permissions for others.
 
@@ -13,21 +13,21 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: privategptinstance-editor-role
 rules:
-- apiGroups:
-  - privategpt.my.domain
-  resources:
-  - privategptinstances
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - privategpt.my.domain
-  resources:
-  - privategptinstances/status
-  verbs:
-  - get
+  - apiGroups:
+      - privategpt.eirl
+    resources:
+      - privategptinstances
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - privategpt.eirl
+    resources:
+      - privategptinstances/status
+    verbs:
+      - get
