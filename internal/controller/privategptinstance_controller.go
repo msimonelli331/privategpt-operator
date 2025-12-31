@@ -407,7 +407,7 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 							MountPath: "/files",
 							Name:      "ingest-volume",
 						}, {
-							MountPath: "/private-gpt",
+							MountPath: "/private-gpt/configs",
 							Name:      "settings",
 							ReadOnly:  true,
 						}},
