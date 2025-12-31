@@ -144,7 +144,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileConfigMap(ctx context.Context, p
 
 	// Check if a ConfigMap for the PrivateGPTInstance exists, if not, create one
 	configMapFound := &corev1.ConfigMap{}
-	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, configMapFound)
+	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, configMapFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// ConfigMap not found, return early to stop reconciliation
 		log.Info("ConfigMap not found in this namespace")
@@ -165,7 +165,7 @@ func (r *PrivateGPTInstanceReconciler) reconcilePersistentVolumeClaim(ctx contex
 
 	// Check if a PersistentVolumeClaim for the PrivateGPTInstance exists, if not, create one
 	persistentVolumeClaimFound := &corev1.PersistentVolumeClaim{}
-	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, persistentVolumeClaimFound)
+	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, persistentVolumeClaimFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// PersistentVolumeClaim not found, return early to stop reconciliation
 		log.Info("PersistentVolumeClaim not found in this namespace")
@@ -186,7 +186,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileDeployment(ctx context.Context, 
 
 	// Check if a Deployment for the PrivateGPTInstance exists, if not, create one
 	deploymentFound := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, deploymentFound)
+	err := r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, deploymentFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
 		dep, err := r.deploymentForInstance(privateGPTInstance)
@@ -232,7 +232,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileService(ctx context.Context, pri
 
 	// Check if a Service for the PrivateGPTInstance exists, if not, create one
 	serviceFound := &corev1.Service{}
-	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, serviceFound)
+	err := r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, serviceFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new service
 		svc, err := r.serviceForInstance(privateGPTInstance)
@@ -279,7 +279,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileIngress(ctx context.Context, pri
 
 	// Check if an Ingress for the PrivateGPTInstance exists, if not, create one
 	ingressFound := &networkingv1.Ingress{}
-	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, ingressFound)
+	err := r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, ingressFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new ingress
 		ing, err := r.ingressForInstance(privateGPTInstance)
