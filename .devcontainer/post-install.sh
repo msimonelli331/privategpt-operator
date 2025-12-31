@@ -14,6 +14,12 @@ curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/$(go env GOARCH)/
 chmod +x kubectl
 mv kubectl /usr/local/bin/kubectl
 
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+# in lieu of restarting the shell
+\. "$HOME/.nvm/nvm.sh"
+nvm install 24
+npm install -g cline
+
 docker network create -d=bridge --subnet=172.19.0.0/24 kind
 
 kind version
@@ -21,3 +27,6 @@ kubebuilder version
 docker --version
 go version
 kubectl version --client
+node -v
+npm -v
+cline version

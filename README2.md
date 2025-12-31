@@ -21,4 +21,8 @@ make docker-build docker-push IMG=ghcr.io/msimonelli331/privategpt-operator:late
 - https://medium.com/developingnodes/mastering-kubernetes-operators-your-definitive-guide-to-starting-strong-70ff43579eb9
 - https://book.kubebuilder.io/quick-start.html#installation
 - https://book.kubebuilder.io/getting-started.html?highlight=appsv1.Deployment
+- https://operatorhub.io/
 - https://github.com/argoproj-labs/argocd-operator/blob/master/.github/workflows/ci-build.yaml
+- https://nodejs.org/en/download/
+- https://pkg.go.dev/k8s.io/api/networking/v1
+- https://pkg.go.dev/k8s.io/api/networking/v1#PathType
