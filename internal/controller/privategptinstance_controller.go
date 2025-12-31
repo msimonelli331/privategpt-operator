@@ -70,12 +70,11 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	log.Info("Processing PrivateGPTInstance", "name", privateGPTInstance.Name)
 
-	// Let's just set the status as Unknown when no status is available
+	// Initialize status if not present
 	if len(privateGPTInstance.Status.Conditions) == 0 {
-		meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-		if err = r.Status().Update(ctx, privateGPTInstance); err != nil {
-			log.Error(err, "Failed to update privateGPTInstance status")
-			return ctrl.Result{}, err
+		result, err := r.initializeStatus(ctx, privateGPTInstance, req)
+		if err != nil {
+			return result, err
 		}
 
 		// Let's re-fetch the privateGPTInstance Custom Resource after updating the status
@@ -88,6 +87,60 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	}
+
+	// Reconcile ConfigMap
+	result, err := r.reconcileConfigMap(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Reconcile PersistentVolumeClaim
+	result, err = r.reconcilePersistentVolumeClaim(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Reconcile Deployment
+	result, err = r.reconcileDeployment(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Reconcile Service
+	result, err = r.reconcileService(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Reconcile Ingress
+	result, err = r.reconcileIngress(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Update status
+	return r.updateStatus(ctx, privateGPTInstance)
+}
+
+// initializeStatus sets up the initial status for the custom resource
+func (r *PrivateGPTInstanceReconciler) initializeStatus(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, req ctrl.Request) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available", 
+		Status: metav1.ConditionUnknown, Reason: "Reconciling", 
+		Message: "Starting reconciliation"})
+
+	if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+		log.Error(err, "Failed to update privateGPTInstance status")
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// reconcileConfigMap handles ConfigMap reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcileConfigMap(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
 
 	// Check if a ConfigMap for the PrivateGPTInstance exists, if not, create one
 	configMapFound := &corev1.ConfigMap{}
@@ -103,6 +156,12 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	// ConfigMap found, continue with reconciliation
 	log.Info("ConfigMap found in this namespace")
+	return ctrl.Result{}, nil
+}
+
+// reconcilePersistentVolumeClaim handles PersistentVolumeClaim reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcilePersistentVolumeClaim(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
 
 	// Check if a PersistentVolumeClaim for the PrivateGPTInstance exists, if not, create one
 	persistentVolumeClaimFound := &corev1.PersistentVolumeClaim{}
@@ -118,6 +177,12 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	// PersistentVolumeClaim found, continue with reconciliation
 	log.Info("PersistentVolumeClaim found in this namespace")
+	return ctrl.Result{}, nil
+}
+
+// reconcileDeployment handles Deployment reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcileDeployment(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
 
 	// Check if a Deployment for the PrivateGPTInstance exists, if not, create one
 	deploymentFound := &appsv1.Deployment{}
@@ -158,6 +223,12 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	}
+	return ctrl.Result{}, nil
+}
+
+// reconcileService handles Service reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcileService(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
 
 	// Check if a Service for the PrivateGPTInstance exists, if not, create one
 	serviceFound := &corev1.Service{}
@@ -199,6 +270,13 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	return ctrl.Result{}, nil
+}
+
+// reconcileIngress handles Ingress reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcileIngress(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
 	// Check if an Ingress for the PrivateGPTInstance exists, if not, create one
 	ingressFound := &networkingv1.Ingress{}
 	err = r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, ingressFound)
@@ -238,6 +316,13 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	}
+
+	return ctrl.Result{}, nil
+}
+
+// updateStatus updates the status of the privateGPTInstance
+func (r *PrivateGPTInstanceReconciler) updateStatus(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
 
 	// The following implementation will update the status
 	meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
@@ -306,7 +391,7 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 							Name:      "settings",
 							ReadOnly:  true,
 						}},
-						Command: []string{"run", privateGPTInstance.Name},
+						Args: []string{"run", privateGPTInstance.Name},
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "ingest-volume",
