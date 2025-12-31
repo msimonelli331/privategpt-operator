@@ -31,8 +31,16 @@ type PrivateGPTInstanceReconciler struct {
 // +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=privategpt.eirl,resources=privategptinstances/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=deployments/status,verbs=get
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services/status,verbs=get
+// +kubebuilder:rbac:groups=networking,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking,resources=ingresses/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims/status,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -79,6 +87,38 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			log.Error(err, "Failed to re-fetch privateGPTInstance")
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Check if a ConfigMap for the PrivateGPTInstance exists, if not, create one
+	configMapFound := &corev1.ConfigMap{}
+	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, configMapFound)
+	if err != nil && apierrors.IsNotFound(err) {
+		// ConfigMap Found
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get ConfigMap")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	} else {
+		log.Info("ConfigMap not found in this namespace")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, nil
+	}
+
+	// Check if a PersistentVolumeClaim for the PrivateGPTInstance exists, if not, create one
+	persistentVolumeClaimFound := &corev1.PersistentVolumeClaim{}
+	err = r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, persistentVolumeClaimFound)
+	if err != nil && apierrors.IsNotFound(err) {
+		// PersistentVolumeClaim Found
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get PersistentVolumeClaim")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	} else {
+		log.Info("PersistentVolumeClaim not found in this namespace")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, nil
 	}
 
 	// Check if a Deployment for the PrivateGPTInstance exists, if not, create one
@@ -263,6 +303,10 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 						VolumeMounts: []corev1.VolumeMount{{
 							MountPath: "/files",
 							Name:      "ingest-volume",
+						}, {
+							MountPath: "/private-gpt",
+							Name:      "settings",
+							ReadOnly:  true,
 						}},
 						Command: []string{"run", privateGPTInstance.Name},
 					}},
@@ -271,6 +315,23 @@ func (r *PrivateGPTInstanceReconciler) deploymentForInstance(
 						VolumeSource: corev1.VolumeSource{
 							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 								ClaimName: "privategpt",
+							},
+						},
+					}, {
+						Name: "settings",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								Name: privateGPTInstance.Name,
+								Items: []corev1.KeyToPath{
+									{
+										Key:  "settings-local.yaml",
+										Path: "settings-local.yaml",
+									},
+									{
+										Key:  "settings-ollama.yaml",
+										Path: "settings-ollama.yaml",
+									},
+								},
 							},
 						},
 					}},

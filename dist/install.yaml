@@ -207,7 +207,9 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - deployments
+  - configmaps
+  - persistentvolumeclaims
+  - services
   verbs:
   - create
   - delete
@@ -219,7 +221,45 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps/status
+  - persistentvolumeclaims/status
+  - services/status
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
   - deployments/status
+  verbs:
+  - get
+- apiGroups:
+  - networking
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking
+  resources:
+  - ingresses/status
   verbs:
   - get
 - apiGroups:
