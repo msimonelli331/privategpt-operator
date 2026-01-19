@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -102,6 +104,12 @@ func (r *PrivateGPTInstanceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Reconcile Deployment
 	result, err = r.reconcileDeployment(ctx, privateGPTInstance)
+	if err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	// Reconcile Middleware
+	result, err = r.reconcileMiddleware(ctx, privateGPTInstance)
 	if err != nil || !result.IsZero() {
 		return result, err
 	}
@@ -243,6 +251,57 @@ func (r *PrivateGPTInstanceReconciler) reconcileDeployment(ctx context.Context, 
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	}
+	return ctrl.Result{}, nil
+}
+
+// reconcileMiddleware handles Traefik Middleware reconciliation
+func (r *PrivateGPTInstanceReconciler) reconcileMiddleware(ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	// Prepare an unstructured with the correct GVK so the client knows what to fetch
+	middlewareFound := &unstructured.Unstructured{}
+	middlewareFound.SetGroupVersionKind(schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "Middleware"})	
+	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, middlewareFound)
+	if err != nil && apierrors.IsNotFound(err) {
+		// Define a new middleware
+		mw, err := r.middlewareForInstance(privateGPTInstance)
+		if err != nil {
+			log.Error(err, "Failed to define new Middleware resource for privateGPTInstance")
+
+			meta.SetStatusCondition(&privateGPTInstance.Status.Conditions, metav1.Condition{Type: "Available",
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Middleware for the custom resource (%s): (%s)", privateGPTInstance.Name, err)})
+
+			if err := r.Status().Update(ctx, privateGPTInstance); err != nil {
+				log.Error(err, "Failed to update privateGPTInstance status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		log.Info("Creating a new Middleware",
+			"Middleware.Namespace", mw.GetNamespace(), "Middleware.Name", mw.GetName())
+		if err = r.Create(ctx, mw); err != nil {
+			log.Error(err, "Failed to create new Middleware",
+				"Middleware.Namespace", mw.GetNamespace(), "Middleware.Name", mw.GetName())
+			return ctrl.Result{}, err
+		}
+
+		// Middleware created successfully; requeue to ensure following resources
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Middleware")
+		return ctrl.Result{}, err
+	}
+
+	// Middleware found, update it if needed
+	log.Info("Middleware found in this namespace")
+	err = r.updateMiddlewareForInstance(ctx, privateGPTInstance, middlewareFound)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -549,4 +608,123 @@ func int32Ptr(i int32) *int32 {
 
 func ptrPathType(p networkingv1.PathType) *networkingv1.PathType {
 	return &p
+}
+
+// middlewareForInstance returns a Middleware object
+func (r *PrivateGPTInstanceReconciler) middlewareForInstance(
+	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*unstructured.Unstructured, error) {
+	middleware := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "traefik.io/v1alpha1",
+			"kind":       "Middleware",
+			"metadata": map[string]interface{}{
+				"name":      "privategpt",
+				"namespace": privateGPTInstance.Namespace,
+			},
+		},
+	}
+	// middleware := &unstructured.Unstructured{
+	// 	Object: map[string]interface{}{
+	// 		"apiVersion": "traefik.io/v1alpha1",
+	// 		"kind":       "Middleware",
+	// 		"metadata": map[string]interface{}{
+	// 			"name":      "test-stripprefix",
+	// 			"namespace": privateGPTInstance.Namespace,
+	// 		},
+	// 		"spec": map[string]interface{}{
+	// 			"stripPrefix": map[string]interface{}{
+	// 				"prefixes": []string{"/default"},
+	// 			},
+	// 		},
+	// 	},
+	// }
+
+	// Set the ownerRef for the Middleware
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(privateGPTInstance, middleware, r.Scheme); err != nil {
+		return nil, err
+	}
+	return middleware, nil
+}
+
+// updateMiddlewareForInstance returns a Middleware object
+func (r *PrivateGPTInstanceReconciler) updateMiddlewareForInstance(
+	ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, middlewareFound *unstructured.Unstructured) (error) {
+	log := logf.FromContext(ctx)
+
+	// Get the current prefixes from the middleware
+	spec, exists := middlewareFound.Object["spec"]
+	if !exists {
+		log.Info("Middleware spec not found, creating new spec")
+		middlewareFound.Object["spec"] = map[string]interface{}{
+			"stripPrefix": map[string]interface{}{
+				"prefixes": []string{"/" + privateGPTInstance.Name},
+			},
+		}
+	} else {
+		specMap, ok := spec.(map[string]interface{})
+		if !ok {
+			log.Info("Middleware spec is not a map, creating new spec")
+			middlewareFound.Object["spec"] = map[string]interface{}{
+				"stripPrefix": map[string]interface{}{
+					"prefixes": []string{"/" + privateGPTInstance.Name},
+				},
+			}
+		} else {
+			stripPrefix, hasStripPrefix := specMap["stripPrefix"]
+			if !hasStripPrefix {
+				log.Info("Middleware stripPrefix not found, creating new stripPrefix")
+				specMap["stripPrefix"] = map[string]interface{}{
+					"prefixes": []string{"/" + privateGPTInstance.Name},
+				}
+			} else {
+				stripPrefixMap, ok := stripPrefix.(map[string]interface{})
+				if !ok {
+					log.Info("Middleware stripPrefix is not a map, creating new stripPrefix")
+					specMap["stripPrefix"] = map[string]interface{}{
+						"prefixes": []string{"/" + privateGPTInstance.Name},
+					}
+				} else {
+					prefixes, hasPrefixes := stripPrefixMap["prefixes"]
+					if !hasPrefixes {
+						log.Info("Middleware prefixes not found, creating new prefixes")
+						stripPrefixMap["prefixes"] = []string{"/" + privateGPTInstance.Name}
+					} else {
+						// Append the new prefix to existing prefixes
+						prefixesList, ok := prefixes.([]interface{})
+						if !ok {
+							log.Info("Middleware prefixes is not a list, creating new prefixes")
+							stripPrefixMap["prefixes"] = []string{"/" + privateGPTInstance.Name}
+						} else {
+							// Convert interface{} to string slice
+							currentPrefixes := make([]string, len(prefixesList))
+							// Also check if the prefix already exists
+							newPrefix := "/" + privateGPTInstance.Name
+							prefixExists := false
+							for i, p := range prefixesList {
+								if prefixStr, ok := p.(string); ok {
+									currentPrefixes[i] = prefixStr
+									if prefixStr == newPrefix {
+										prefixExists = true
+									}
+								}
+							}
+							
+							if !prefixExists {
+								currentPrefixes = append(currentPrefixes, newPrefix)
+								stripPrefixMap["prefixes"] = currentPrefixes
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Update the middleware object
+	if err := r.Update(ctx, middlewareFound); err != nil {
+		log.Error(err, "Failed to update Middleware")
+		return err
+	}
+	return nil
 }

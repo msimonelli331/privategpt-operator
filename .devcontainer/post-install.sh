@@ -60,4 +60,4 @@ install_npm
 install_cline
 install_helm
 
-docker network create -d=bridge --subnet=172.19.0.0/24 kind
+docker network create -d=bridge --subnet=172.20.0.0/24 kind
