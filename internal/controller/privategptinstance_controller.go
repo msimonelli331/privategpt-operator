@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -260,7 +260,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileMiddleware(ctx context.Context, 
 
 	// Prepare an unstructured with the correct GVK so the client knows what to fetch
 	middlewareFound := &unstructured.Unstructured{}
-	middlewareFound.SetGroupVersionKind(schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "Middleware"})	
+	middlewareFound.SetGroupVersionKind(schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "Middleware"})
 	err := r.Get(ctx, types.NamespacedName{Name: "privategpt", Namespace: privateGPTInstance.Namespace}, middlewareFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new middleware
@@ -393,6 +393,13 @@ func (r *PrivateGPTInstanceReconciler) reconcileIngress(ctx context.Context, pri
 	} else if err != nil {
 		log.Error(err, "Failed to get Ingress")
 		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
+
+	// Ingress found, update it if needed
+	log.Info("Ingress found in this namespace")
+	err = r.updateIngressForInstance(ctx, privateGPTInstance, ingressFound)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -548,44 +555,63 @@ func (r *PrivateGPTInstanceReconciler) serviceForInstance(
 // ingressForInstance returns a PrivateGPTInstance Ingress object
 func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*networkingv1.Ingress, error) {
-	hostname := privateGPTInstance.Name + "." + "pgpt" + "." + privateGPTInstance.Spec.Domain
+	hostname := "privategpt.devops"
 
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      privateGPTInstance.Name,
-			Namespace: privateGPTInstance.Namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/name": privateGPTInstance.Name,
-			},
 			Annotations: map[string]string{
-				"cert-manager.io/common-name": hostname,
-				"cert-manager.io/issuer":      "ca-issuer",
+				"cert-manager.io/common-name":                      "privategpt.devops",
+				"cert-manager.io/issuer":                           "ca-issuer",
+				"traefik.ingress.kubernetes.io/router.middlewares": "devops-privategpt@kubernetescrd",
 			},
+			Name:      "privategpt-privategpt-react",
+			Namespace: "devops",
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: stringPtr("traefik"),
-			Rules: []networkingv1.IngressRule{{
-				Host: hostname,
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/",
-							PathType: ptrPathType(networkingv1.PathTypePrefix),
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: privateGPTInstance.Name,
-									Port: networkingv1.ServiceBackendPort{
-										Number: 8001,
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: hostname,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "privategpt-privategpt-react",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 3000,
+										},
 									},
 								},
-							},
-						}},
+								Path:     "/",
+								PathType: ptrPathType(networkingv1.PathTypePrefix),
+							}},
+						},
 					},
 				},
-			}},
+				{
+					Host: hostname,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "default",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 8001,
+										},
+									},
+								},
+								Path:     "/default",
+								PathType: ptrPathType(networkingv1.PathTypePrefix),
+							}},
+						},
+					},
+				},
+			},
 			TLS: []networkingv1.IngressTLS{{
 				Hosts:      []string{hostname},
-				SecretName: privateGPTInstance.Name,
+				SecretName: "privategpt",
 			}},
 		},
 	}
@@ -596,6 +622,48 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 		return nil, err
 	}
 	return ingress, nil
+}
+
+// updateIngressForInstance appends additional rules to the ingress rules list
+func (r *PrivateGPTInstanceReconciler) updateIngressForInstance(
+	ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, ingressFound *networkingv1.Ingress) error {
+	log := logf.FromContext(ctx)
+
+	hostname := "privategpt." + privateGPTInstance.Spec.Domain
+
+	newRule := networkingv1.IngressRule{
+		Host: hostname,
+		IngressRuleValue: networkingv1.IngressRuleValue{
+			HTTP: &networkingv1.HTTPIngressRuleValue{
+				Paths: []networkingv1.HTTPIngressPath{{
+					Backend: networkingv1.IngressBackend{
+						Service: &networkingv1.IngressServiceBackend{
+							Name: privateGPTInstance.Name,
+							Port: networkingv1.ServiceBackendPort{
+								Number: 8001,
+							},
+						},
+					},
+					Path:     "/" + privateGPTInstance.Name,
+					PathType: ptrPathType(networkingv1.PathTypePrefix),
+				}},
+			},
+		},
+	}
+
+	// Append the new rule to the existing rules
+	ingressFound.Spec.Rules = append(ingressFound.Spec.Rules, newRule)
+
+	// Update the ingress object
+	log.Info("Updating existing Ingress",
+		"Ingress.Namespace", ingressFound.Namespace, "Ingress.Name", ingressFound.Name)
+	if err := r.Update(ctx, ingressFound); err != nil {
+		log.Error(err, "Failed to update existing Ingress",
+			"Ingress.Namespace", ingressFound.Namespace, "Ingress.Name", ingressFound.Name)
+		return err
+	}
+
+	return nil
 }
 
 func stringPtr(s string) *string {
@@ -649,7 +717,7 @@ func (r *PrivateGPTInstanceReconciler) middlewareForInstance(
 
 // updateMiddlewareForInstance returns a Middleware object
 func (r *PrivateGPTInstanceReconciler) updateMiddlewareForInstance(
-	ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, middlewareFound *unstructured.Unstructured) (error) {
+	ctx context.Context, privateGPTInstance *privategptv1alpha1.PrivateGPTInstance, middlewareFound *unstructured.Unstructured) error {
 	log := logf.FromContext(ctx)
 
 	// Get the current prefixes from the middleware
@@ -709,7 +777,7 @@ func (r *PrivateGPTInstanceReconciler) updateMiddlewareForInstance(
 									}
 								}
 							}
-							
+
 							if !prefixExists {
 								currentPrefixes = append(currentPrefixes, newPrefix)
 								stripPrefixMap["prefixes"] = currentPrefixes

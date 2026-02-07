@@ -51,6 +51,12 @@ install_helm() {
     helm version
 }
 
+install_go_lint() {
+    curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.8.0
+
+    golangci-lint --version
+}
+
 docker --version
 go version
 install_kind
