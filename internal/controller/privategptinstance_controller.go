@@ -359,7 +359,7 @@ func (r *PrivateGPTInstanceReconciler) reconcileIngress(ctx context.Context, pri
 
 	// Check if an Ingress for the PrivateGPTInstance exists, if not, create one
 	ingressFound := &networkingv1.Ingress{}
-	err := r.Get(ctx, types.NamespacedName{Name: privateGPTInstance.Name, Namespace: privateGPTInstance.Namespace}, ingressFound)
+	err := r.Get(ctx, types.NamespacedName{Name: "privategpt-privategpt-react", Namespace: privateGPTInstance.Namespace}, ingressFound)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new ingress
 		ing, err := r.ingressForInstance(privateGPTInstance)
@@ -556,14 +556,15 @@ func (r *PrivateGPTInstanceReconciler) serviceForInstance(
 // ingressForInstance returns a PrivateGPTInstance Ingress object
 func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 	privateGPTInstance *privategptv1alpha1.PrivateGPTInstance) (*networkingv1.Ingress, error) {
-	hostname := "privategpt.devops"
+	hostname := "privategpt." + privateGPTInstance.Spec.Domain
+	middleware := privateGPTInstance.Namespace + "-privategpt@kubernetescrd"
 
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				"cert-manager.io/common-name":                      "privategpt.devops",
+				"cert-manager.io/common-name":                      hostname,
 				"cert-manager.io/issuer":                           "ca-issuer",
-				"traefik.ingress.kubernetes.io/router.middlewares": "devops-privategpt@kubernetescrd",
+				"traefik.ingress.kubernetes.io/router.middlewares": middleware,
 			},
 			Name:      "privategpt-privategpt-react",
 			Namespace: "devops",
@@ -597,13 +598,13 @@ func (r *PrivateGPTInstanceReconciler) ingressForInstance(
 							Paths: []networkingv1.HTTPIngressPath{{
 								Backend: networkingv1.IngressBackend{
 									Service: &networkingv1.IngressServiceBackend{
-										Name: "default",
+										Name: privateGPTInstance.Name,
 										Port: networkingv1.ServiceBackendPort{
 											Number: 8001,
 										},
 									},
 								},
-								Path:     "/default",
+								Path:     "/" + privateGPTInstance.Name,
 								PathType: ptrPathType(networkingv1.PathTypePrefix),
 							}},
 						},
@@ -631,7 +632,12 @@ func (r *PrivateGPTInstanceReconciler) updateIngressForInstance(
 	log := logf.FromContext(ctx)
 
 	hostname := "privategpt." + privateGPTInstance.Spec.Domain
+	middleware := privateGPTInstance.Namespace + "-privategpt@kubernetescrd"
 
+	// Update annotations with the middleware
+	ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
+
+	// Define a new rule for the PrivateGPTInstance
 	newRule := networkingv1.IngressRule{
 		Host: hostname,
 		IngressRuleValue: networkingv1.IngressRuleValue{
@@ -693,21 +699,6 @@ func (r *PrivateGPTInstanceReconciler) middlewareForInstance(
 			"spec": map[string]interface{}{},
 		},
 	}
-	// middleware := &unstructured.Unstructured{
-	// 	Object: map[string]interface{}{
-	// 		"apiVersion": "traefik.io/v1alpha1",
-	// 		"kind":       "Middleware",
-	// 		"metadata": map[string]interface{}{
-	// 			"name":      "test-stripprefix",
-	// 			"namespace": privateGPTInstance.Namespace,
-	// 		},
-	// 		"spec": map[string]interface{}{
-	// 			"stripPrefix": map[string]interface{}{
-	// 				"prefixes": []string{"/default"},
-	// 			},
-	// 		},
-	// 	},
-	// }
 
 	// Set the ownerRef for the Middleware
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
