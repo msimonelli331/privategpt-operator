@@ -63,25 +63,25 @@ jobs:
           driver-opts: image=${{ env.SETUP_BUILDKIT_IMAGE }}
           buildkitd-flags: --debug
 
-      - name: Free up space
-        run: |
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
-          df -h
-          echo "Removing large packages"
-          sudo apt-get remove -y azure-cli google-chrome-stable podman buildah
-          sudo apt-get remove -y 'gfortran-.*'
-          sudo apt-get remove -y 'temurin-.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'powershell-.*'
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          rm -rf /usr/share/dotnet/
-          rm -rf /opt/hostedtoolcache
-          df -h
-          du /usr --max-depth=1 --block-size=G
+      # - name: Free up space
+      #   run: |
+      #     dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+      #     df -h
+      #     echo "Removing large packages"
+      #     sudo apt-get remove -y azure-cli google-chrome-stable podman buildah
+      #     sudo apt-get remove -y 'gfortran-.*'
+      #     sudo apt-get remove -y 'temurin-.*'
+      #     sudo apt-get remove -y '^dotnet-.*'
+      #     sudo apt-get remove -y '^llvm-.*'
+      #     sudo apt-get remove -y 'powershell-.*'
+      #     sudo apt-get autoremove -y
+      #     sudo apt-get clean
+      #     df -h
+      #     echo "Removing large directories"
+      #     rm -rf /usr/share/dotnet/
+      #     rm -rf /opt/hostedtoolcache
+      #     df -h
+      #     du /usr --max-depth=1 --block-size=G
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
