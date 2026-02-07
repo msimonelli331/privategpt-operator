@@ -690,6 +690,8 @@ func (r *PrivateGPTInstanceReconciler) middlewareForInstance(
 				"name":      "privategpt",
 				"namespace": privateGPTInstance.Namespace,
 			},
+			"spec": map[string]interface{}{
+			},
 		},
 	}
 	// middleware := &unstructured.Unstructured{
