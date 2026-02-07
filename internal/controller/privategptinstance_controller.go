@@ -633,41 +633,63 @@ func (r *PrivateGPTInstanceReconciler) updateIngressForInstance(
 
 	hostname := "privategpt." + privateGPTInstance.Spec.Domain
 	middleware := privateGPTInstance.Namespace + "-privategpt@kubernetescrd"
-
-	// Update annotations with the middleware
-	ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
-
+	newPath := "/" + privateGPTInstance.Name
 	// Define a new rule for the PrivateGPTInstance
-	newRule := networkingv1.IngressRule{
-		Host: hostname,
-		IngressRuleValue: networkingv1.IngressRuleValue{
-			HTTP: &networkingv1.HTTPIngressRuleValue{
-				Paths: []networkingv1.HTTPIngressPath{{
-					Backend: networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: privateGPTInstance.Name,
-							Port: networkingv1.ServiceBackendPort{
-								Number: 8001,
-							},
-						},
-					},
-					Path:     "/" + privateGPTInstance.Name,
-					PathType: ptrPathType(networkingv1.PathTypePrefix),
-				}},
+	newPathObj := []networkingv1.HTTPIngressPath{{
+		Backend: networkingv1.IngressBackend{
+			Service: &networkingv1.IngressServiceBackend{
+				Name: privateGPTInstance.Name,
+				Port: networkingv1.ServiceBackendPort{
+					Number: 8001,
+				},
 			},
 		},
+		Path:     "/" + privateGPTInstance.Name,
+		PathType: ptrPathType(networkingv1.PathTypePrefix),
+	}}
+	update := false
+
+	// Update annotations with the middleware
+	if value, ok := ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"]; ok {
+        log.Info("Found middleware annotation with value: ", value)
+		if value != middleware {
+			ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
+			update = true
+		}
+    } else {
+        log.Info("Middleware annotation not found")
+    }
+
+	for _, rule := range ingressFound.Spec.Rules {
+		if rule.Host == hostname {
+			// Check if any path in this rule already points to this instance
+			pathExists := false
+			for _, path := range rule.IngressRuleValue.HTTP.Paths {
+				if path.Path == newPath {
+					pathExists = true
+					break
+				}
+			}
+			if !pathExists {
+				rule.IngressRuleValue.HTTP.Paths = append(rule.IngressRuleValue.HTTP.Paths, newPathObj...)
+				update = true
+				break
+			} else {
+				log.Info("Rule for instance already exists, skipping rule addition",
+					"Instance Name", privateGPTInstance.Name, "Host", hostname)
+			}
+		}
 	}
 
-	// Append the new rule to the existing rules
-	ingressFound.Spec.Rules = append(ingressFound.Spec.Rules, newRule)
-
-	// Update the ingress object
-	log.Info("Updating existing Ingress",
-		"Ingress.Namespace", ingressFound.Namespace, "Ingress.Name", ingressFound.Name)
-	if err := r.Update(ctx, ingressFound); err != nil {
-		log.Error(err, "Failed to update existing Ingress",
+	if update {
+		// Update the ingress object
+		log.Info("Updating existing Ingress",
 			"Ingress.Namespace", ingressFound.Namespace, "Ingress.Name", ingressFound.Name)
-		return err
+		if err := r.Update(ctx, ingressFound); err != nil {
+			log.Error(err, "Failed to update existing Ingress",
+				"Ingress.Namespace", ingressFound.Namespace, "Ingress.Name", ingressFound.Name)
+			return err
+		}
 	}
 
 	return nil
