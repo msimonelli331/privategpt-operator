@@ -651,27 +651,29 @@ func (r *PrivateGPTInstanceReconciler) updateIngressForInstance(
 
 	// Update annotations with the middleware
 	if value, ok := ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"]; ok {
-        log.Info("Found middleware annotation with value: ", value)
+		log.Info("Found middleware annotation with value: ", value)
 		if value != middleware {
 			ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
 			update = true
 		}
-    } else {
-        log.Info("Middleware annotation not found")
-    }
+	} else {
+		log.Info("Middleware annotation not found")
+		ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
+		update = true
+	}
 
 	for _, rule := range ingressFound.Spec.Rules {
 		if rule.Host == hostname {
 			// Check if any path in this rule already points to this instance
 			pathExists := false
-			for _, path := range rule.IngressRuleValue.HTTP.Paths {
+			for _, path := range rule.HTTP.Paths {
 				if path.Path == newPath {
 					pathExists = true
 					break
 				}
 			}
 			if !pathExists {
-				rule.IngressRuleValue.HTTP.Paths = append(rule.IngressRuleValue.HTTP.Paths, newPathObj...)
+				rule.HTTP.Paths = append(rule.HTTP.Paths, newPathObj...)
 				update = true
 				break
 			} else {
