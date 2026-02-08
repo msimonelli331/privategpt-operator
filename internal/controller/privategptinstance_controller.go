@@ -651,7 +651,7 @@ func (r *PrivateGPTInstanceReconciler) updateIngressForInstance(
 
 	// Update annotations with the middleware
 	if value, ok := ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"]; ok {
-		log.Info("Found middleware annotation with value: ", value)
+		log.Info("Found middleware annotation", "Value", value)
 		if value != middleware {
 			ingressFound.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middleware
 			update = true
